@@ -1,4 +1,3 @@
-// src/routes/api/coinbase/checkout/+server.js
 import { json } from '@sveltejs/kit';
 import { COINBASE_API_KEY } from '$env/static/private';
 
