@@ -1,12 +1,12 @@
 // src/routes/api/coinbase/checkout/+server.js
 import { json } from '@sveltejs/kit';
 import { COINBASE_API_KEY } from '$env/static/private';
-import { PUBLIC_STORE_URL } from '$env/static/public';
 
-const PLATFORM_FEE = 0.05; // 5% — hardcoded business constant
+const PLATFORM_FEE = 0.05;
 
 export async function POST({ request }) {
   try {
+    const origin = new URL(request.url).origin;
     const { items, email, currency, total } = await request.json();
 
     if (!items?.length) {
@@ -20,10 +20,7 @@ export async function POST({ request }) {
     const payload = {
       name: 'CalcMod Order',
       description,
-      local_price: {
-        amount: total.toFixed(2),
-        currency: 'USD'
-      },
+      local_price: { amount: total.toFixed(2), currency: 'USD' },
       pricing_type: 'fixed_price',
       requested_info: ['email'],
       metadata: {
@@ -34,8 +31,8 @@ export async function POST({ request }) {
         platform_fee_pct: '5%',
         preferred_crypto: currency
       },
-      redirect_url: `${PUBLIC_STORE_URL}/checkout/success?method=crypto`,
-      cancel_url: `${PUBLIC_STORE_URL}/checkout`
+      redirect_url: `${origin}/checkout/success?method=crypto`,
+      cancel_url: `${origin}/checkout`
     };
 
     const res = await fetch('https://api.commerce.coinbase.com/charges', {
