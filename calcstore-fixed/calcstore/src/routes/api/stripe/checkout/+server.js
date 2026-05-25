@@ -1,4 +1,3 @@
-// src/routes/api/stripe/checkout/+server.js
 import { json } from '@sveltejs/kit';
 import Stripe from 'stripe';
 import { STRIPE_SECRET_KEY, SELLER_STRIPE_ACCOUNT_ID } from '$env/static/private';
