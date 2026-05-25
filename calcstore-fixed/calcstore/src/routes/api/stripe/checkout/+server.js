@@ -1,13 +1,18 @@
+// src/routes/api/stripe/checkout/+server.js
 import { json } from '@sveltejs/kit';
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, SELLER_STRIPE_ACCOUNT_ID } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 const PLATFORM_FEE = 0.05;
 
 export async function POST({ request }) {
+  if (!env.STRIPE_SECRET_KEY) {
+    return json({ error: 'Card payments not yet configured.' }, { status: 503 });
+  }
+
   try {
     const origin = new URL(request.url).origin;
-    const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
     const { items, email, name, total } = await request.json();
 
     if (!items?.length) {
@@ -30,20 +35,10 @@ export async function POST({ request }) {
       quantity: item.qty
     }));
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams = {
       mode: 'payment',
       line_items: lineItems,
       customer_email: email,
-      payment_intent_data: {
-        application_fee_amount: platformFeeCents,
-        transfer_data: { destination: SELLER_STRIPE_ACCOUNT_ID },
-        metadata: {
-          platform_fee_cents: platformFeeCents,
-          seller_payout_cents: totalCents - platformFeeCents,
-          platform_fee_pct: '5%',
-          customer_name: name || ''
-        }
-      },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout`,
       metadata: {
@@ -51,7 +46,23 @@ export async function POST({ request }) {
         customer_email: email,
         customer_name: name || ''
       }
-    });
+    };
+
+    // Only add transfer/fee params if a connected account is configured
+    if (env.SELLER_STRIPE_ACCOUNT_ID) {
+      sessionParams.payment_intent_data = {
+        application_fee_amount: platformFeeCents,
+        transfer_data: { destination: env.SELLER_STRIPE_ACCOUNT_ID },
+        metadata: {
+          platform_fee_cents: platformFeeCents,
+          seller_payout_cents: totalCents - platformFeeCents,
+          platform_fee_pct: '5%',
+          customer_name: name || ''
+        }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return json({ url: session.url });
   } catch (err) {
