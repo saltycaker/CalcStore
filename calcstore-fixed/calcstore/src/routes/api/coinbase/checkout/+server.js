@@ -1,9 +1,14 @@
+// src/routes/api/coinbase/checkout/+server.js
 import { json } from '@sveltejs/kit';
-import { COINBASE_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 const PLATFORM_FEE = 0.05;
 
 export async function POST({ request }) {
+  if (!env.COINBASE_API_KEY) {
+    return json({ error: 'Crypto payments not yet configured.' }, { status: 503 });
+  }
+
   try {
     const origin = new URL(request.url).origin;
     const { items, email, currency, total } = await request.json();
@@ -38,7 +43,7 @@ export async function POST({ request }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CC-Api-Key': COINBASE_API_KEY,
+        'X-CC-Api-Key': env.COINBASE_API_KEY,
         'X-CC-Version': '2018-03-22'
       },
       body: JSON.stringify(payload)
